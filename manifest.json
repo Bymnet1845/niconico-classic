@@ -87,6 +87,11 @@
 		}
 	],
 
+	"web_accessible_resources": [{
+        "resources": ["image/*", "sound/*"],
+        "matches": ["https://www.nicovideo.jp/*"]
+    }],
+
 	"action" :{
 		"default_title": "ニコニコクラシックスタイル",
 		"default_popup": "popup.html"

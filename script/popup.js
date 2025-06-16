@@ -6,6 +6,7 @@ const OPTIONS = [
 	[ "videoRankingThumbnailSize", "video-ranking-thumbnail-size" ],
 	[ "videoWatchPageLayout", "video-watch-page-layout"],
 	[ "videoAutoPlayback", "video-auto-playback"],
+	[ "videoWarikomi", "video-warikomi"],
 	[ "videoPlayerSize", "video-player-size"],
 	[ "videoPlayerOverlayIcon", "video-player-overlay-icon"]
 ];
@@ -28,6 +29,7 @@ document.querySelector("select[name=\"video-watch-page-layout\"]").addEventListe
 document.querySelector("select[name=\"video-player-size\"]").addEventListener("change", () => { chrome.storage.local.set({ videoPlayerSize: document.querySelector("select[name=\"video-player-size\"]").value }); });
 document.querySelector("select[name=\"video-player-overlay-icon\"]").addEventListener("change", () => { chrome.storage.local.set({ videoPlayerOverlayIcon: document.querySelector("select[name=\"video-player-overlay-icon\"]").value }); });
 document.querySelector("select[name=\"video-auto-playback\"]").addEventListener("change", () => { chrome.storage.local.set({ videoAutoPlayback: document.querySelector("select[name=\"video-auto-playback\"]").value }); });
+document.querySelector("select[name=\"video-warikomi\"]").addEventListener("change", () => { chrome.storage.local.set({ videoWarikomi: document.querySelector("select[name=\"video-warikomi\"]").value }); });
 
 document.querySelectorAll("#category-list button").forEach((element) => {
 	element.addEventListener("click", () => {

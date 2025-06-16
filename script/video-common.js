@@ -9,6 +9,11 @@ let niconicoClassicCurrentUri, niconicoClassicPreviousUri, niconicoClassicPageTy
 let niconicoClassicVideoRankingDefaultType = "custom";
 let niconicoClassicVideoId, niconicoClassicVideoAutoPlayback = true, niconicoClassicVideoAutoPlaybackIsCanceled = false;
 
+const NICONICO_CLASSIC_WARIKOMI_TIMES = [{ hour: 0, minute: 0, second: 0 }, { hour: 2, minute: 0, second: 0 }, { hour: 19, minute: 0, second: 0 }];
+const NICONICO_CLASSIC_WARIKOMI_IMAGES_SOURCE = [chrome.runtime.getURL("image/warikomi/logo.png"), chrome.runtime.getURL("image/warikomi/000.png"), chrome.runtime.getURL("image/warikomi/200.png"), chrome.runtime.getURL("image/warikomi/1900.png")];
+const NICONICO_CLASSIC_WARIKOMI_CHIMES_SOURCE = [chrome.runtime.getURL("sound/warikomi/000.wav"), chrome.runtime.getURL("sound/warikomi/200.wav") ,chrome.runtime.getURL("sound/warikomi/1900.wav")];
+let niconicoClassicWarikomiEnabled = false, niconicoClassicWarikomiInterval;
+
 chrome.storage.local.get("videoWatchPageLayout", (content) => { if (content.videoWatchPageLayout !== undefined && content.videoWatchPageLayout !== "") document.body.classList.add("niconico-classic_video-watch-page-layout-is-" + content.videoWatchPageLayout); });
 chrome.storage.local.get("videoPlayerSize", (content) => { if (content.videoPlayerSize !== undefined && content.videoPlayerSize !== "" && content.videoPlayerSize !== "variable") document.body.classList.add("niconico-classic_video-player-size-is-fixed", "niconico-classic_video-player-width-is-" + content.videoPlayerSize); });
 chrome.storage.local.get("videoPlayerOverlayIcon", (content) => { if (content.videoPlayerOverlayIcon !== "shown") document.body.classList.add("niconico-classic_video-player-overlay-icon-is-hidden"); });
@@ -16,6 +21,7 @@ chrome.storage.local.get("videoAutoPlayback", (content) => { if (content.videoAu
 chrome.storage.local.get("videoRankingAlign", (content) => { if (content.videoRankingAlign !== "left") document.body.classList.add("niconico-classic_video-ranking-align-is-center"); });
 chrome.storage.local.get("videoRankingThumbnailSize", (content) => { if (content.videoRankingThumbnailSize !== "large") document.body.classList.add("niconico-classic_video-ranking-thumbnail-size-is-medium"); });
 chrome.storage.local.get("videoRankingDefaultType", (content) => { if (content.videoRankingDefaultType !== undefined && content.videoRankingDefaultType !== "") niconicoClassicVideoRankingDefaultType = content.videoRankingDefaultType; });
+chrome.storage.local.get("videoWarikomi", (content) => { if (content.videoWarikomi === "true") niconicoClassicWarikomiEnabled = true; });
 
 setInterval(() => {
 	niconicoClassicCurrentUri = window.location.pathname;
@@ -88,6 +94,7 @@ setInterval(() => {
 				}
 
 				niconicoClassicInsertVideoDetailsAdditionalLinks();
+				if (niconicoClassicWarikomiEnabled && !document.querySelector(`#niconico-classic_video-player-marquee-wrapper`)) niconicoClassicSetWarikomi();
 			} else {
 				document.body.style.setProperty("--niconico-classic-nicovideo-content-margin-top", "24px");
 			}
@@ -98,6 +105,8 @@ setInterval(() => {
 		case "video-ranking_custom":
 			break;
 	}
+
+	if (niconicoClassicPageType !== "video-watch") clearInterval(niconicoClassicWarikomiInterval); 
 }, 10);
 
 const NICONICO_CLASSIC_VIDEO_COMMON_MUTATION_OBSERVER = new MutationObserver(() => {
@@ -184,6 +193,121 @@ function niconicoClassicInsertVideoDetailsAdditionalLinks() {
 			"beforeend",
 			`<div class="niconico-classic_video-details-additional-link pedia"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M6.94 7.82a.44.44 0 0 1-.44-.44v-.44a.44.44 0 0 1 .44-.44h10.12a.44.44 0 0 1 .44.44v.44a.44.44 0 0 1-.44.44h-3.74L12 9.14h4.18a.44.44 0 0 1 .44.44v7.48c0 .24-.2.44-.44.44H7.82a.44.44 0 0 1-.44-.44V9.58a.44.44 0 0 1 .44-.44H9.8l1.32-1.32zm2.86 5.72a.2.2 0 0 0-.22.22v2.2a.2.2 0 0 0 .22.22h4.4a.2.2 0 0 0 .22-.22v-2.2a.2.2 0 0 0-.22-.22zm0-3.08c-.12 0-.22.1-.22.22V12c0 .12.1.22.22.22h4.4c.12 0 .22-.1.22-.22v-1.32c0-.12-.1-.22-.22-.22z" clip-rule="evenodd"></path></svg><span>ニコニコ大百科</span><a href="https://dic.nicovideo.jp/v/${niconicoClassicVideoId}">この動画の動画記事</a></div><div class="niconico-classic_video-details-additional-link"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M18 6h-3.89L12.3 3.99A3 3 0 0 0 10.07 3H6a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3V9a3 3 0 0 0-3-3"></path></svg><a href="https://www.nicovideo.jp/openlist/${niconicoClassicVideoId}">この動画を登録している公開マイリスト</a></div>`
 		);
+	}
+}
+
+function niconicoClassicSetWarikomi() {
+	if (document.querySelector(`.grid-area_\\[player\\]`)) {
+		document.querySelector(`.grid-area_\\[player\\]`).insertAdjacentHTML(
+			"afterbegin",
+			`<div id="niconico-classic_video-player-marquee-wrapper"><canvas id="niconico-classic_niconico-warikomi" width="1088" height="112"></canvas></div>`
+		);
+
+		const NICONICO_CLASSIC_VIDEO_PLAYER_VIDEO_CONTENT_ELEMENT = document.querySelector(`video[data-name="video-content"]`);
+		const NICONICO_CLASSIC_WARIKOMI_ELEMENT = document.querySelector(`#niconico-classic_niconico-warikomi`);
+		const NICONICO_CLASSIC_WARIKOMI_CONTEXT =  NICONICO_CLASSIC_WARIKOMI_ELEMENT.getContext("2d");
+		let niconicoClassicWarikomiImagesLoaded = false, niconicoClassicWarikomiChimesLoaded = false, niconicoClassicVideoPlayingBeforeWarikomi = false;
+		let niconicoClassicWarikomiLastAnnouncedTime = "", niconicoClassicWarikomiStartUnixTime;
+
+		let niconicoClassicWarikomiImages = new Array(4);
+		let niconicoClassicWarikomiLoadedImagesCount = 0;
+
+		NICONICO_CLASSIC_WARIKOMI_IMAGES_SOURCE.forEach((image, index) => {
+			niconicoClassicWarikomiImages[index] = new Image();
+			niconicoClassicWarikomiImages[index].src = image;
+
+			niconicoClassicWarikomiImages[index].onload = () => {
+				niconicoClassicWarikomiLoadedImagesCount++;
+				if (niconicoClassicWarikomiLoadedImagesCount >= 4) niconicoClassicWarikomiImagesLoaded = true;
+			}
+		});
+		
+		let niconicoClassicWarikomiChimes = new Array(3);
+		let niconicoClassicWarikomiLoadedChimesCount = 0;
+
+		NICONICO_CLASSIC_WARIKOMI_CHIMES_SOURCE.forEach((chime, index) => {
+			niconicoClassicWarikomiChimes[index] = new Audio(chime);
+			niconicoClassicWarikomiChimes[index].load();
+
+			niconicoClassicWarikomiChimes[index].addEventListener("canplay", () => {
+				niconicoClassicWarikomiLoadedChimesCount++;
+				if (niconicoClassicWarikomiLoadedChimesCount >= 3) niconicoClassicWarikomiChimesLoaded = true;
+			});
+		});
+
+		function niconicoClassicPadWarikomiTimeNumber(number) {
+			return number.toString().padStart(2, "0");
+		}
+
+		function niconicoClassicCheckWarikomiTime() {
+			const NICONICO_CLASSIC_WARIKOMI_NOW = new Date();
+			const NICONICO_CLASSIC_WARIKOMI_NOW_STRING = `${niconicoClassicPadWarikomiTimeNumber(NICONICO_CLASSIC_WARIKOMI_NOW.getHours())}:${niconicoClassicPadWarikomiTimeNumber(NICONICO_CLASSIC_WARIKOMI_NOW.getMinutes())}:${niconicoClassicPadWarikomiTimeNumber(NICONICO_CLASSIC_WARIKOMI_NOW.getSeconds())}`;
+			const NICONICO_CLASSIC_WARIKOMI_TIME_MATCHED = NICONICO_CLASSIC_WARIKOMI_TIMES.some(time => NICONICO_CLASSIC_WARIKOMI_NOW.getHours() === time.hour && NICONICO_CLASSIC_WARIKOMI_NOW.getMinutes() === time.minute && NICONICO_CLASSIC_WARIKOMI_NOW.getSeconds() === time.second);
+
+			if (NICONICO_CLASSIC_WARIKOMI_TIME_MATCHED) {
+				if (niconicoClassicWarikomiLastAnnouncedTime !== NICONICO_CLASSIC_WARIKOMI_NOW_STRING) {
+					niconicoClassicWarikomiLastAnnouncedTime = NICONICO_CLASSIC_WARIKOMI_NOW_STRING;
+					niconicoClassicWarikomiStartUnixTime = NICONICO_CLASSIC_WARIKOMI_NOW.getTime();
+					NICONICO_CLASSIC_WARIKOMI_ELEMENT.classList.add("is-playing");
+
+					if (NICONICO_CLASSIC_VIDEO_PLAYER_VIDEO_CONTENT_ELEMENT.paused || NICONICO_CLASSIC_VIDEO_PLAYER_VIDEO_CONTENT_ELEMENT.ended) {
+						niconicoClassicVideoPlayingBeforeWarikomi = false;
+					} else {
+						niconicoClassicVideoPlayingBeforeWarikomi = true;
+						NICONICO_CLASSIC_VIDEO_PLAYER_VIDEO_CONTENT_ELEMENT.pause();
+					}
+
+					niconicoClassicPlayWarikomiAnimation();
+
+					switch (niconicoClassicWarikomiLastAnnouncedTime) {
+						case "19:00:00": niconicoClassicWarikomiChimes[2].play(); break;
+						case "02:00:00": niconicoClassicWarikomiChimes[1].play(); break;
+						default: niconicoClassicWarikomiChimes[0].play(); break;
+					}
+				}
+			}
+		}
+
+		function niconicoClassicPlayWarikomiAnimation() {
+			NICONICO_CLASSIC_WARIKOMI_CONTEXT.clearRect(0, 0, NICONICO_CLASSIC_WARIKOMI_ELEMENT.width, NICONICO_CLASSIC_WARIKOMI_ELEMENT.height);
+			NICONICO_CLASSIC_WARIKOMI_CONTEXT.globalAlpha = 1;
+			let niconicoClassicWarikomiElapsedMilliSeconds = Date.now() - niconicoClassicWarikomiStartUnixTime;
+
+			if (100 <= niconicoClassicWarikomiElapsedMilliSeconds && niconicoClassicWarikomiElapsedMilliSeconds < 1100) NICONICO_CLASSIC_WARIKOMI_CONTEXT.globalAlpha = (niconicoClassicWarikomiElapsedMilliSeconds - 100) / 1000;
+			if (3300 <= niconicoClassicWarikomiElapsedMilliSeconds && niconicoClassicWarikomiElapsedMilliSeconds < 4300) NICONICO_CLASSIC_WARIKOMI_CONTEXT.globalAlpha = 1 - ((niconicoClassicWarikomiElapsedMilliSeconds - 3300) / 1000);
+			if (100 <= niconicoClassicWarikomiElapsedMilliSeconds && niconicoClassicWarikomiElapsedMilliSeconds < 4300) NICONICO_CLASSIC_WARIKOMI_CONTEXT.drawImage(niconicoClassicWarikomiImages[0], (NICONICO_CLASSIC_WARIKOMI_ELEMENT.width - 560) / 2, 8, 560, 96);
+
+			if (4750 <= niconicoClassicWarikomiElapsedMilliSeconds && niconicoClassicWarikomiElapsedMilliSeconds < 5750) NICONICO_CLASSIC_WARIKOMI_CONTEXT.globalAlpha = (niconicoClassicWarikomiElapsedMilliSeconds - 4750) / 1000;
+
+			if ((4750 <= niconicoClassicWarikomiElapsedMilliSeconds && niconicoClassicWarikomiElapsedMilliSeconds < 10000) || (11000 <= niconicoClassicWarikomiElapsedMilliSeconds && niconicoClassicWarikomiElapsedMilliSeconds < 12000) || (13000 <= niconicoClassicWarikomiElapsedMilliSeconds && niconicoClassicWarikomiElapsedMilliSeconds < 15000)) {
+				switch (niconicoClassicWarikomiLastAnnouncedTime) {
+					case "19:00:00": NICONICO_CLASSIC_WARIKOMI_CONTEXT.drawImage(niconicoClassicWarikomiImages[3], (NICONICO_CLASSIC_WARIKOMI_ELEMENT.width - 368) / 2, 8, 368, 96); break;
+					case "02:00:00": NICONICO_CLASSIC_WARIKOMI_CONTEXT.drawImage(niconicoClassicWarikomiImages[2], (NICONICO_CLASSIC_WARIKOMI_ELEMENT.width - 368) / 2, 8, 368, 96); break;
+					default: NICONICO_CLASSIC_WARIKOMI_CONTEXT.drawImage(niconicoClassicWarikomiImages[1], (NICONICO_CLASSIC_WARIKOMI_ELEMENT.width - 368) / 2, 8, 368, 96); break;
+				}
+			}
+
+			if (14000 <= niconicoClassicWarikomiElapsedMilliSeconds && niconicoClassicWarikomiElapsedMilliSeconds < 14667) NICONICO_CLASSIC_WARIKOMI_CONTEXT.globalAlpha = (niconicoClassicWarikomiElapsedMilliSeconds - 14000) / 667;
+			if (15333 <= niconicoClassicWarikomiElapsedMilliSeconds && niconicoClassicWarikomiElapsedMilliSeconds < 16000) NICONICO_CLASSIC_WARIKOMI_CONTEXT.globalAlpha = 1 - ((niconicoClassicWarikomiElapsedMilliSeconds - 15333) / 667);
+			
+			if (14000 <= niconicoClassicWarikomiElapsedMilliSeconds && niconicoClassicWarikomiElapsedMilliSeconds < 16000) {
+				NICONICO_CLASSIC_WARIKOMI_CONTEXT.fillStyle = "#FFFFFF";
+				NICONICO_CLASSIC_WARIKOMI_CONTEXT.fillRect(0, 0, NICONICO_CLASSIC_WARIKOMI_ELEMENT.width, NICONICO_CLASSIC_WARIKOMI_ELEMENT.height);
+			}
+			
+			if (niconicoClassicWarikomiElapsedMilliSeconds < 16000) {
+				NICONICO_CLASSIC_VIDEO_PLAYER_VIDEO_CONTENT_ELEMENT.pause();
+				requestAnimationFrame(niconicoClassicPlayWarikomiAnimation);
+			} else {
+				NICONICO_CLASSIC_WARIKOMI_ELEMENT.classList.remove("is-playing");
+				if (niconicoClassicVideoPlayingBeforeWarikomi) NICONICO_CLASSIC_VIDEO_PLAYER_VIDEO_CONTENT_ELEMENT.play();
+			}
+		}
+
+		niconicoClassicWarikomiInterval = setInterval(() => {
+			NICONICO_CLASSIC_WARIKOMI_ELEMENT.setAttribute("width", NICONICO_CLASSIC_WARIKOMI_ELEMENT.clientWidth * 2);
+			if (niconicoClassicWarikomiImagesLoaded && niconicoClassicWarikomiChimesLoaded) niconicoClassicCheckWarikomiTime();
+		}, 50);
 	}
 }
 

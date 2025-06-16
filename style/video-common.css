@@ -199,6 +199,11 @@ body[data-niconico-classic="video-watch"] {
 	}
 }
 
+/* ニコニコ割り込み */
+#niconico-classic_niconico-warikomi { width: 100%; height: 0; top: 0; left: 0; right: 0; background: #000000; position: absolute; z-index: 3; }
+#niconico-classic_niconico-warikomi.is-playing { height: 56px; }
+#niconico-classic_video-player-marquee-wrapper:has(.is-playing):after { content: ""; top: 0; bottom: 0; left: 0; right: 0; background: #00000080; position: absolute; z-index: 2; }
+
 /* プロフィールアイコンの形状の変更 */
 body.niconico-classic_icon-is-square {
 	.bdr_full[src^="https\://secure-dcdn.cdn.nimg.jp/nicoaccount/usericon/"], .bdr_full[src^="https\://secure-dcdn.cdn.nimg.jp/comch/channel-icon/"] {
